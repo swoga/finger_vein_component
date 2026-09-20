@@ -5,7 +5,7 @@ from esphome.components import uart
 from esphome.const import CONF_ID, CONF_PASSWORD
 
 CODEOWNERS = ["@swoga"]
-AUTO_LOAD = ["sensor", "text_sensor", "number", "select", "switch"]
+AUTO_LOAD = ["sensor", "number", "select", "switch"]
 DEPENDENCIES = ["uart"]
 MULTI_CONF = True
 
@@ -15,7 +15,6 @@ CONF_CONNECT_TIMEOUT_MS = "connect_timeout_ms"
 CONF_OPERATION_TIMEOUT_MS = "operation_timeout_ms"
 CONF_IDENTIFY_FREE_ENABLED = "identify_free"
 CONF_USER_ID = "user_id"
-CONF_USERNAME = "username"
 CONF_ON_VERIFY_SUCCESS = "on_verify_success"
 CONF_ON_VERIFY_FAILED = "on_verify_failed"
 CONF_ON_ENROLL_SUCCESS = "on_enroll_success"
@@ -56,7 +55,7 @@ _CALLBACK_AUTOMATIONS = (
     automation.CallbackAutomation(
         CONF_ON_VERIFY_SUCCESS,
         "add_on_verify_success_callback",
-        [(cg.uint8, "user_id"), (cg.std_string, "username")],
+        [(cg.uint8, "user_id")],
     ),
     automation.CallbackAutomation(
         CONF_ON_VERIFY_FAILED,
@@ -119,7 +118,6 @@ async def finger_vein_verify_action(config, action_id, template_args, args):
             cv.Optional(CONF_USER_ID, default=0): cv.templatable(
                 cv.int_range(min=0, max=100)
             ),
-            cv.Optional(CONF_USERNAME, default=""): cv.templatable(cv.string),
         }
     ),
     synchronous=False,
@@ -128,7 +126,6 @@ async def finger_vein_enroll_action(config, action_id, template_args, args):
     paren = await cg.get_variable(config[CONF_FINGER_VEIN_ID])
     var = cg.new_Pvariable(action_id, template_args, paren)
     cg.add(var.set_user_id(await cg.templatable(config[CONF_USER_ID], args, cg.uint8)))
-    cg.add(var.set_username(await cg.templatable(config[CONF_USERNAME], args, cg.std_string)))
     return var
 
 

@@ -112,7 +112,7 @@ namespace esphome
                 }
                 ESP_LOGI(TAG, "verify operation: matched user_id %u", static_cast<unsigned>(user_id));
                 this->reset_operation_(false);
-                this->request_get_username(user_id);
+                this->poll_for_release_();
                 break;
             }
             case XG_INPUT_FINGER:
@@ -133,12 +133,12 @@ namespace esphome
             }
         }
 
-        bool FingerVeinComponent::request_enroll(uint8_t user_id, const std::string &username)
+        bool FingerVeinComponent::request_enroll(uint8_t user_id)
         {
             if (this->active_op == Operation::IDENTIFY_FREE)
             {
-                return this->cancel_for_([this, user_id, username]
-                                         { this->request_enroll(user_id, username); });
+                return this->cancel_for_([this, user_id]
+                                         { this->request_enroll(user_id); });
             }
 
             if (user_id == 0)
@@ -164,13 +164,12 @@ namespace esphome
                 return false;
             }
             this->pending_user_id_ = user_id;
-            this->pending_username_ = username;
             uint8_t payload[12] = {0};
             payload[0] = user_id;
             payload[5] = 3;
             payload[10] = 10;
             this->send_command_(XG_CMD_ENROLL, payload, sizeof(payload));
-            ESP_LOGI(TAG, "started enroll operation for user_id %u '%s' with timeout %ums", static_cast<unsigned>(user_id), username.c_str(), static_cast<unsigned>(finger_timeout_ms));
+            ESP_LOGI(TAG, "started enroll operation for user_id %u with timeout %ums", static_cast<unsigned>(user_id), static_cast<unsigned>(finger_timeout_ms));
             return true;
         }
 
@@ -195,7 +194,6 @@ namespace esphome
                 ESP_LOGI(TAG, "enroll operation successful for user_id %u", static_cast<unsigned>(this->pending_user_id_));
                 this->enroll_success_callback_(this->pending_user_id_);
                 this->reset_operation_(false);
-                this->request_set_username(this->pending_user_id_, this->pending_username_);
                 return;
             case XG_INPUT_FINGER:
                 this->op_started_ms_ = millis();
@@ -461,7 +459,7 @@ namespace esphome
                     this->matched_user_id_sensor_->publish_state(static_cast<float>(user_id));
                 ESP_LOGI(TAG, "identify_free operation: matched user_id %u", static_cast<unsigned>(user_id));
                 this->reset_operation_(false);
-                this->request_get_username(user_id);
+                this->poll_for_release_();
                 break;
             }
 
@@ -480,93 +478,6 @@ namespace esphome
                 this->reset_operation_(false);
                 break;
             }
-        }
-
-        bool FingerVeinComponent::request_get_username(uint8_t user_id)
-        {
-            if (this->active_op == Operation::IDENTIFY_FREE)
-            {
-                return this->cancel_for_([this, user_id]
-                                         { this->request_get_username(user_id); });
-            }
-
-            if (user_id == 0 || user_id > 100)
-            {
-                ESP_LOGE(TAG, "invalid user_id %u for get_username", static_cast<unsigned>(user_id));
-                return false;
-            }
-
-            if (!this->begin_operation_(Operation::GET_USERNAME, this->operation_timeout_ms_))
-            {
-                return false;
-            }
-            this->pending_user_id_ = user_id;
-            uint8_t payload[1] = {user_id};
-            this->send_command_(XG_CMD_GET_USERNAME, payload, sizeof(payload));
-            ESP_LOGI(TAG, "started get_username operation for user_id %u", static_cast<unsigned>(user_id));
-            return true;
-        }
-
-        void FingerVeinComponent::handle_get_username_(const Packet &packet)
-        {
-            if (packet.data[0] != XG_ERR_SUCCESS)
-            {
-                this->reset_operation_(true);
-                return;
-            }
-
-            std::string username(reinterpret_cast<const char *>(packet.data + 1), strnlen(reinterpret_cast<const char *>(packet.data + 1), 14));
-            ESP_LOGI(TAG, "get_username operation successful: %s", username.c_str());
-            if (this->matched_username_sensor_ != nullptr)
-                this->matched_username_sensor_->publish_state(username);
-            this->verify_success_callback_(this->pending_user_id_, username);
-            this->reset_operation_(false);
-            this->poll_for_release_();
-        }
-
-        bool FingerVeinComponent::request_set_username(uint8_t user_id, const std::string &username)
-        {
-            if (this->active_op == Operation::IDENTIFY_FREE)
-            {
-                return this->cancel_for_([this, user_id, username]
-                                         { this->request_set_username(user_id, username); });
-            }
-
-            if (user_id == 0 || user_id > 100)
-            {
-                ESP_LOGE(TAG, "invalid user_id %u for set_username", static_cast<unsigned>(user_id));
-                return ENTITY_FIELD_DISABLED_BY_DEFAULT_SHIFT;
-            }
-
-            if (username.length() > 14)
-            {
-                ESP_LOGE(TAG, "username too long for set_username (length %zu)", username.length());
-                return false;
-            }
-
-            if (!this->begin_operation_(Operation::SET_USERNAME, this->operation_timeout_ms_))
-            {
-                return false;
-            }
-            uint8_t payload[16] = {0};
-            payload[0] = user_id;
-            std::memcpy(payload + 2, username.c_str(), username.length());
-            this->send_command_(XG_CMD_SET_USERNAME, payload, sizeof(payload));
-            ESP_LOGI(TAG, "started set_username operation for user_id %u with username '%s'", static_cast<unsigned>(user_id), username.c_str());
-            return true;
-        }
-
-        void FingerVeinComponent::handle_set_username_(const Packet &packet)
-        {
-            if (packet.data[0] != XG_ERR_SUCCESS)
-            {
-                this->reset_operation_(true);
-                return;
-            }
-
-            ESP_LOGI(TAG, "set_username operation successful");
-            this->reset_operation_(false);
-            this->request_enroll_info_();
         }
 
         bool FingerVeinComponent::request_get_id_info(uint8_t user_id)
@@ -780,12 +691,6 @@ namespace esphome
             case Operation::CLEAR_ALL:
                 this->handle_clear_(packet);
                 break;
-            case Operation::GET_USERNAME:
-                this->handle_get_username_(packet);
-                break;
-            case Operation::SET_USERNAME:
-                this->handle_set_username_(packet);
-                break;
             default:
                 ESP_LOGE(TAG, "received packet for unknown operation %s", operation_to_string_(this->active_op));
                 this->reset_operation_(true);
@@ -907,10 +812,6 @@ namespace esphome
                 return "SET_DUP_CHECK";
             case Operation::SET_SAME_FINGER:
                 return "SET_SAME_FINGER";
-            case Operation::GET_USERNAME:
-                return "GET_USERNAME";
-            case Operation::SET_USERNAME:
-                return "SET_USERNAME";
             default:
                 return "UNKNOWN";
             }

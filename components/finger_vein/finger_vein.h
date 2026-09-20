@@ -8,7 +8,6 @@
 #include "esphome/core/automation.h"
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/switch/switch.h"
-#include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/component.h"
 #include "esphome/core/helpers.h"
@@ -40,8 +39,6 @@ namespace esphome
             XG_CMD_VERIFY = 0x17,
             XG_CMD_IDENTIFY_FREE = 0x18,
             XG_CMD_CANCEL = 0x19,
-            XG_CMD_GET_USERNAME = 0x3C,
-            XG_CMD_SET_USERNAME = 0x3D,
         };
 
         enum XGCode : uint8_t
@@ -85,8 +82,6 @@ namespace esphome
             SET_TIMEOUT,
             SET_DUP_CHECK,
             SET_SAME_FINGER,
-            GET_USERNAME,
-            SET_USERNAME
         };
 
         class FingerVeinComponent : public PollingComponent, public uart::UARTDevice
@@ -107,7 +102,6 @@ namespace esphome
             void set_identify_free_enabled(bool enabled) { this->identify_free_enabled_ = enabled; }
 
             void set_matched_user_id_sensor(sensor::Sensor *sensor) { this->matched_user_id_sensor_ = sensor; }
-            void set_matched_username_sensor(text_sensor::TextSensor *sensor) { this->matched_username_sensor_ = sensor; }
             void set_security_number(number::Number *number) { this->security_number_ = number; }
             void set_timeout_number(number::Number *number) { this->timeout_number_ = number; }
             void set_dup_check_switch(switch_::Switch *sw) { this->dup_check_switch_ = sw; }
@@ -116,7 +110,7 @@ namespace esphome
             void set_max_users_sensor(sensor::Sensor *sensor) { this->max_users_sensor_ = sensor; }
 
             bool request_verify();
-            bool request_enroll(uint8_t user_id = 0, const std::string &username = "");
+            bool request_enroll(uint8_t user_id = 0);
             bool request_get_id_info(uint8_t user_id);
             bool request_clear_user(uint8_t user_id);
             bool request_clear_all();
@@ -124,8 +118,6 @@ namespace esphome
             bool request_set_timeout(uint8_t seconds);
             bool request_set_dup_check(bool enable);
             bool request_set_same_finger(bool enable);
-            bool request_get_username(uint8_t user_id);
-            bool request_set_username(uint8_t user_id, const std::string &username);
 
             template <typename F>
             void add_on_verify_success_callback(F &&callback)
@@ -187,8 +179,6 @@ namespace esphome
             void handle_enroll_(const Packet &packet);
             void handle_get_id_info_(const Packet &packet);
             void handle_clear_(const Packet &packet);
-            void handle_get_username_(const Packet &packet);
-            void handle_set_username_(const Packet &packet);
 
             uint16_t checksum_(const uint8_t *data, size_t len) const;
             uint32_t get_finger_timeout_ms_() const;
@@ -209,11 +199,8 @@ namespace esphome
             std::function<void()> pending_action_{};
             bool release_poll_pending_{false};
             uint8_t pending_user_id_{0};
-            std::string pending_username_{};
 
             sensor::Sensor *matched_user_id_sensor_{nullptr};
-            text_sensor::TextSensor *matched_username_sensor_{nullptr};
-            text_sensor::TextSensor *status_text_sensor_{nullptr};
             number::Number *security_number_{nullptr};
             number::Number *timeout_number_{nullptr};
             switch_::Switch *dup_check_switch_{nullptr};
@@ -247,8 +234,7 @@ namespace esphome
         public:
             explicit EnrollAction(FingerVeinComponent *parent) : parent_(parent) {}
             TEMPLATABLE_VALUE(uint8_t, user_id)
-            TEMPLATABLE_VALUE(std::string, username)
-            void play(const Ts &...x) override { this->parent_->request_enroll(this->user_id_.value(x...), this->username_.value(x...)); }
+            void play(const Ts &...x) override { this->parent_->request_enroll(this->user_id_.value(x...)); }
 
         protected:
             FingerVeinComponent *parent_;
