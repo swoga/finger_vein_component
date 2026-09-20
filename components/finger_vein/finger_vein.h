@@ -219,7 +219,7 @@ namespace esphome
             uint8_t id_info_scan_next_{0};
             std::map<uint8_t, uint8_t> id_info_scan_results_{};
 
-            LazyCallbackManager<void(uint8_t, std::string)> verify_success_callback_;
+            LazyCallbackManager<void(uint8_t)> verify_success_callback_;
             LazyCallbackManager<void()> verify_failed_callback_;
             LazyCallbackManager<void(uint8_t)> enroll_success_callback_;
             LazyCallbackManager<void()> place_finger_callback_;
