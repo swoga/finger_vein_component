@@ -5,7 +5,7 @@ from esphome.components import uart
 from esphome.const import CONF_ID, CONF_PASSWORD
 
 CODEOWNERS = ["@swoga"]
-AUTO_LOAD = ["sensor", "number", "select", "switch"]
+AUTO_LOAD = ["sensor", "text_sensor", "number", "select", "switch"]
 DEPENDENCIES = ["uart"]
 MULTI_CONF = True
 

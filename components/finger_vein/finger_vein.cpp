@@ -424,7 +424,7 @@ namespace esphome
 
             this->reset_operation_(false);
             ESP_LOGI(TAG, "get enroll info successful");
-            this->poll_for_release_();
+            this->start_id_info_scan_();
         }
 
         void FingerVeinComponent::start_identify_free_()
@@ -506,6 +506,52 @@ namespace esphome
             return true;
         }
 
+        void FingerVeinComponent::start_id_info_scan_()
+        {
+            this->id_info_scan_active_ = true;
+            this->id_info_scan_next_ = 1;
+            this->id_info_scan_results_.clear();
+            this->request_next_id_info_();
+        }
+
+        void FingerVeinComponent::request_next_id_info_()
+        {
+            if (this->id_info_scan_next_ > 100)
+            {
+                this->publish_id_info_scan_();
+                this->poll_for_release_();
+                return;
+            }
+
+            const uint8_t user_id = this->id_info_scan_next_++;
+            this->request_get_id_info(user_id);
+        }
+
+        void FingerVeinComponent::publish_id_info_scan_()
+        {
+            this->id_info_scan_active_ = false;
+            if (this->registered_users_details_sensor_ == nullptr)
+            {
+                return;
+            }
+
+            std::string result = "{";
+            bool first = true;
+            for (const auto &entry : this->id_info_scan_results_)
+            {
+                if (!first)
+                {
+                    result += ",";
+                }
+                result += std::to_string(entry.first);
+                result += ":";
+                result += std::to_string(entry.second);
+                first = false;
+            }
+            result += "}";
+            this->registered_users_details_sensor_->publish_state(result);
+        }
+
         void FingerVeinComponent::handle_get_id_info_(const Packet &packet)
         {
             if (packet.data[0] != XG_ERR_SUCCESS)
@@ -517,6 +563,14 @@ namespace esphome
             const uint8_t template_count = packet.data[1];
             ESP_LOGI(TAG, "get_id_info operation successful for user_id %u with template_count %u", static_cast<unsigned>(this->pending_user_id_), static_cast<unsigned>(template_count));
             this->reset_operation_(false);
+            if (this->id_info_scan_active_)
+            {
+                if (template_count > 0)
+                {
+                    this->id_info_scan_results_[this->pending_user_id_] = template_count;
+                }
+                this->request_next_id_info_();
+            }
         }
 
         void FingerVeinComponent::poll_for_release_()

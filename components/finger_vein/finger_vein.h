@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -8,6 +9,7 @@
 #include "esphome/core/automation.h"
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/switch/switch.h"
+#include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/component.h"
 #include "esphome/core/helpers.h"
@@ -107,6 +109,7 @@ namespace esphome
             void set_dup_check_switch(switch_::Switch *sw) { this->dup_check_switch_ = sw; }
             void set_same_finger_switch(switch_::Switch *sw) { this->same_finger_switch_ = sw; }
             void set_registered_users_sensor(sensor::Sensor *sensor) { this->registered_users_sensor_ = sensor; }
+            void set_registered_users_details_sensor(text_sensor::TextSensor *sensor) { this->registered_users_details_sensor_ = sensor; }
             void set_max_users_sensor(sensor::Sensor *sensor) { this->max_users_sensor_ = sensor; }
 
             bool request_verify();
@@ -167,6 +170,9 @@ namespace esphome
             void poll_for_release_();
             void request_system_info_();
             void request_enroll_info_();
+            void start_id_info_scan_();
+            void request_next_id_info_();
+            void publish_id_info_scan_();
 
             void handle_connect_(const Packet &packet);
             void handle_get_system_info_(const Packet &packet);
@@ -206,7 +212,12 @@ namespace esphome
             switch_::Switch *dup_check_switch_{nullptr};
             switch_::Switch *same_finger_switch_{nullptr};
             sensor::Sensor *registered_users_sensor_{nullptr};
+            text_sensor::TextSensor *registered_users_details_sensor_{nullptr};
             sensor::Sensor *max_users_sensor_{nullptr};
+
+            bool id_info_scan_active_{false};
+            uint8_t id_info_scan_next_{0};
+            std::map<uint8_t, uint8_t> id_info_scan_results_{};
 
             LazyCallbackManager<void(uint8_t, std::string)> verify_success_callback_;
             LazyCallbackManager<void()> verify_failed_callback_;
