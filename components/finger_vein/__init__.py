@@ -5,7 +5,7 @@ from esphome.components import uart
 from esphome.const import CONF_ID, CONF_PASSWORD
 
 CODEOWNERS = ["@swoga"]
-AUTO_LOAD = ["sensor", "text_sensor", "number", "select", "switch"]
+AUTO_LOAD = ["event", "sensor", "text_sensor", "number", "select", "switch"]
 DEPENDENCIES = ["uart"]
 MULTI_CONF = True
 
@@ -55,7 +55,7 @@ _CALLBACK_AUTOMATIONS = (
     automation.CallbackAutomation(
         CONF_ON_VERIFY_SUCCESS,
         "add_on_verify_success_callback",
-        [(cg.uint8, "user_id")],
+        [(cg.uint8, "user_id"), (cg.bool_, "user_event")],
     ),
     automation.CallbackAutomation(
         CONF_ON_VERIFY_FAILED,

@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "esphome/components/number/number.h"
+#include "esphome/components/event/event.h"
 #include "esphome/core/automation.h"
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/switch/switch.h"
@@ -111,6 +112,7 @@ namespace esphome
             void set_registered_users_sensor(sensor::Sensor *sensor) { this->registered_users_sensor_ = sensor; }
             void set_registered_users_details_sensor(text_sensor::TextSensor *sensor) { this->registered_users_details_sensor_ = sensor; }
             void set_max_users_sensor(sensor::Sensor *sensor) { this->max_users_sensor_ = sensor; }
+            void set_user_event(uint8_t user_id, event::Event *event) { this->user_events_[user_id] = event; }
 
             bool request_verify();
             bool request_enroll(uint8_t user_id = 0);
@@ -214,12 +216,13 @@ namespace esphome
             sensor::Sensor *registered_users_sensor_{nullptr};
             text_sensor::TextSensor *registered_users_details_sensor_{nullptr};
             sensor::Sensor *max_users_sensor_{nullptr};
+            event::Event *user_events_[101]{};
 
             bool id_info_scan_active_{false};
             uint8_t id_info_scan_next_{0};
             std::map<uint8_t, uint8_t> id_info_scan_results_{};
 
-            LazyCallbackManager<void(uint8_t)> verify_success_callback_;
+            LazyCallbackManager<void(uint8_t, bool)> verify_success_callback_;
             LazyCallbackManager<void()> verify_failed_callback_;
             LazyCallbackManager<void(uint8_t)> enroll_success_callback_;
             LazyCallbackManager<void()> place_finger_callback_;

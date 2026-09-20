@@ -110,7 +110,12 @@ namespace esphome
                 {
                     this->matched_user_id_sensor_->publish_state(static_cast<float>(user_id));
                 }
-                this->verify_success_callback_(this->pending_user_id_);
+                const bool user_event = user_id <= 100 && this->user_events_[user_id] != nullptr;
+                if (user_event)
+                {
+                    this->user_events_[user_id]->trigger("verified");
+                }
+                this->verify_success_callback_(user_id, user_event);
                 ESP_LOGI(TAG, "verify operation: matched user_id %u", static_cast<unsigned>(user_id));
                 this->reset_operation_(false);
                 this->poll_for_release_();
@@ -458,7 +463,12 @@ namespace esphome
                 const uint8_t user_id = packet.data[1];
                 if (this->matched_user_id_sensor_ != nullptr)
                     this->matched_user_id_sensor_->publish_state(static_cast<float>(user_id));
-                this->verify_success_callback_(this->pending_user_id_);
+                const bool user_event = user_id <= 100 && this->user_events_[user_id] != nullptr;
+                if (user_event)
+                {
+                    this->user_events_[user_id]->trigger("verified");
+                }
+                this->verify_success_callback_(user_id, user_event);
                 ESP_LOGI(TAG, "identify_free operation: matched user_id %u", static_cast<unsigned>(user_id));
                 this->reset_operation_(false);
                 this->poll_for_release_();
